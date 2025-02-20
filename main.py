@@ -23,12 +23,42 @@ def openDialog():
     else:
         print("No folder selected.")
 
+# def eval_blur(img_path):
+#     img = cv2.imread(img_path)
+#     gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
+#     laplacian = cv2.Laplacian(gray,cv2.CV_64F)
+#     variance = laplacian.var()
+#     return variance
+
 def eval_blur(img_path):
-    img = cv2.imread(img_path)
-    gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
-    laplacian = cv2.Laplacian(gray,cv2.CV_64F)
-    variance = laplacian.var()
-    return variance
+    # Convert path to raw string or use double backslashes for Windows paths
+    normalized_path = img_path.replace('\\', '/')
+    
+    # Try reading with OpenCV
+    img = cv2.imread(normalized_path)
+    
+    # If OpenCV fails, use PIL to load and convert to OpenCV format
+    if img is None:
+        try:
+            pil_img = Image.open(normalized_path)
+            img = np.array(pil_img)
+            
+            # Convert RGB to BGR (if image is in RGB format)
+            if len(img.shape) == 3 and img.shape[2] == 3:
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        except Exception as e:
+            print(f"Error loading image with PIL: {e}")
+            return 0  # Return 0 if image can't be loaded
+    
+    # Continue with blur evaluation
+    if img is not None:
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+        variance = laplacian.var()
+        return variance
+    else:
+        print(f"Failed to load image: {normalized_path}")
+        return 0  # Return 0 if image can't be processed
 
 def filterFiles():
     for file in filelist:
@@ -36,18 +66,18 @@ def filterFiles():
             filtered_files.append(file)
     print(filtered_files)
 
-def showImg():
-    global img_index,label,filename_label
+# def showImg():
+#     global img_index,label,filename_label
 
-    if filtered_files:
-        image_path = os.path.join(folder_path,filtered_files[img_index])
-        image = Image.open(image_path)
-        image_resized = scaleImg(image, max_width=400, max_height=400)
-        img_tk = ImageTk.PhotoImage(image_resized)
-        label.config(image=img_tk)
-        label.image = img_tk
+#     if filtered_files:
+#         image_path = os.path.join(folder_path,filtered_files[img_index])
+#         image = Image.open(image_path)
+#         image_resized = scaleImg(image, max_width=400, max_height=400)
+#         img_tk = ImageTk.PhotoImage(image_resized)
+#         label.config(image=img_tk)
+#         label.image = img_tk
 
-    filename_label.config(text=filtered_files[img_index])
+#     filename_label.config(text=filtered_files[img_index])
 
 def previous_image():
     global img_index
@@ -75,10 +105,10 @@ def scaleImg(img, max_width=400, max_height=400):
     return resized_image
 
 def window():
-    global label, filename_label
+    global label, filename_label,score_label
     root = tk.Tk()
     root.geometry("600x600")  
-    root.title("Image Viewer")
+    root.title("Gallery CleanUp")
 
     top_frame = tk.Frame(root)
     top_frame.pack(fill=tk.X, pady=10)
@@ -98,6 +128,9 @@ def window():
     
     filename_label = tk.Label(root, text="", font=("Arial", 12))
     filename_label.pack(pady=10)
+
+    score_label = tk.Label(root, text="", font=("Arial", 12))
+    score_label.pack(pady=10, anchor=tk.CENTER)
     
     nav_frame = tk.Frame(root)
     nav_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
@@ -111,7 +144,7 @@ def window():
     root.mainloop()
 
 def showImg():
-    global img_index, label, filename_label
+    global img_index, label, filename_label, score_label
 
     if filtered_files:
         image_path = os.path.join(folder_path, filtered_files[img_index])
@@ -124,6 +157,9 @@ def showImg():
         label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
         filename_label.config(text=filtered_files[img_index])
+        # Here's the fix - pass the full path to eval_blur
+        score = f"Współczynnik rozmazania zdjęcia: {eval_blur(image_path)}"
+        score_label.config(text=score)
     else:
         label.config(image="")
         filename_label.config(text="No images to display")
